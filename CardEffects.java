@@ -1,80 +1,71 @@
 package monopoly;
 
-/**
- * helper methods for applying chance/community chest card effects
- * to the player's board position.
- */
 public class CardEffects {
 
-    //board indices for special squares
-    public static final int JAIL_INDEX = 10;
     private static final int BOARD_SIZE = 40;
 
-    //railroads and utilities on the classic board
-    private static final int[] RAILROADS = {5, 15, 25, 35};
-    private static final int[] UTILITIES = {12, 28};
-
-    /**
-     * Returns the index of the nearest target square strictly ahead
-     * of currentPos, wrapping around the board if needed.
-     */
-    private static int nearestForward(int currentPos, int[] targets) {
-        int bestTarget = targets[0];
-        int minDistance = BOARD_SIZE + 1;
-
-        for (int t : targets) {
-            int distance = (t - currentPos + BOARD_SIZE) % BOARD_SIZE;
-            if (distance == 0) {
-                distance = BOARD_SIZE;
-            }
-            if (distance < minDistance) {
-                minDistance = distance;
-                bestTarget = t;
-            }
-        }
-        return bestTarget;
+    private static void discard(Card c, Deck chance, Deck cc) {
+        if (c.isGOOJ()) return;    // saved until used
+        if (c.isFromCommunityChest()) cc.discardCard(c);
+        else chance.discardCard(c);
     }
 
-    //nearest railroad ahead. 
-    public static int nearestRailroad(int currentPos) {
-        return nearestForward(currentPos, RAILROADS);
+    private static int nearestRailroad(int pos) {
+        if (pos < 5) return 5;
+        if (pos < 15) return 15;
+        if (pos < 25) return 25;
+        if (pos < 35) return 35;
+        return 5;
     }
 
-    //nearest utility ahead. 
-    public static int nearestUtility(int currentPos) {
-        return nearestForward(currentPos, UTILITIES);
+    private static int nearestUtility(int pos) {
+        if (pos < 12) return 12;
+        if (pos < 28) return 28;
+        return 12;
     }
 
     /**
-     * Applies a card's positional effect to the player's current position
-     * and returns the new board index.
+     * Applies the effect of a drawn card.
      */
-    public static int applyCardEffect(Card card, int currentPos) {
-        switch (card.getType()) {
+    public static int apply(
+            Card c,
+            int pos,
+            PlayerState p,
+            Deck chance,
+            Deck cc
+    ) {
+        switch (c.getType()) {
+
             case MOVE_ABSOLUTE:
-                return card.getTargetIndex();
+                discard(c, chance, cc);
+                return c.getAbsoluteIndex();
 
             case MOVE_RELATIVE:
-                int newPos = (currentPos + card.getRelativeOffset()) % BOARD_SIZE;
-                if (newPos < 0) {
-                    newPos += BOARD_SIZE;
-                }
-                return newPos;
-
-            case NEAREST_RAILROAD:
-                return nearestRailroad(currentPos);
-
-            case NEAREST_UTILITY:
-                return nearestUtility(currentPos);
+                discard(c, chance, cc);
+                return (pos + c.getRelativeMove() + BOARD_SIZE) % BOARD_SIZE;
 
             case GO_TO_JAIL:
-                return JAIL_INDEX;
+                discard(c, chance, cc);
+                p.inJail = true;
+                p.failedDoubleAttempts = 0;
+                return 10;
+
+            case NEAREST_RAILROAD:
+                discard(c, chance, cc);
+                return nearestRailroad(pos);
+
+            case NEAREST_UTILITY:
+                discard(c, chance, cc);
+                return nearestUtility(pos);
+
+            case GET_OUT_OF_JAIL_FREE:
+                p.hasGOOJ = true;
+                return pos;
 
             case NO_EFFECT:
-            case GET_OUT_OF_JAIL_FREE:
-            default:
-                //position doesn't change
-                return currentPos;
+                discard(c, chance, cc);
+                return pos;
         }
+        return pos;
     }
 }
