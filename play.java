@@ -168,54 +168,55 @@ public class play {
 
         for (int t = 1; t <= totalTurns; t++) {
 
+        	//rolling dices
             int d1 = dice();
             int d2 = dice();
 
-            if (p.inJail) {
+            if (p.inJail) {//check if player in jail
 
-                if (p.hasGOOJ) {
-                    p.hasGOOJ = false;
+                if (p.hasGOOJ) { // if player has Get Out Of Jail card
+                    p.hasGOOJ = false; // set it to false
 
-                    if (goojCard.isFromCommunityChest()) chest.returnGOOJCard(goojCard);
+                    if (goojCard.isFromCommunityChest()) chest.returnGOOJCard(goojCard); //return the card to whatever deck it belongs to
                     else chance.returnGOOJCard(goojCard);
 
                     goojCard = null;
-                    p.inJail = false;
-                    pos = (pos + d1 + d2) % 40;
+                    p.inJail = false; // out of jail
+                    pos = (pos + d1 + d2) % 40; //move
                 }
-                else { 
-                    p.inJail = false;
-                    pos = (pos + d1 + d2) % 40;
+                else { //player doesnt have a GOOJ card, pays the fine then
+                    p.inJail = false; //out of jail
+                    pos = (pos + d1 + d2) % 40; //move
                 }
             }
 
-            else {
-                pos = (pos + d1 + d2) % 40;
+            else { // player not in jail
+                pos = (pos + d1 + d2) % 40; //move
 
-                if (d1 == d2) {
-                    p.doublesCounter++;
-                    if (p.doublesCounter == 3) {
-                        pos = 10;
+                if (d1 == d2) { // if doubles
+                    p.doublesCounter++; //counter doubles +1
+                    if (p.doublesCounter == 3) { // if player has 3 doubles
+                        pos = 10; // to jail
                         p.inJail = true;
-                        p.doublesCounter = 0;
+                        p.doublesCounter = 0; // reset doubles counter
                     }
                 } else p.doublesCounter = 0;
             }
+ 
+            newGame[pos].setTimesVisited(newGame[pos].getTimesVisited() + 1); // update visited times of each space
 
-            newGame[pos].setTimesVisited(newGame[pos].getTimesVisited() + 1);
-
-            if (pos == 30) {
+            if (pos == 30) { // if player falls in go to jail space, go to jail
                 pos = 10;
                 p.inJail = true;
             }
 
-            if (pos == 7 || pos == 22 || pos == 36) {
+            if (pos == 7 || pos == 22 || pos == 36) { //chance spaces
                 Card c = chance.drawCard();
                 pos = CardEffects.apply(c, pos, p, chance, chest);
                 if (c.isGOOJ()) goojCard = c;
             }
 
-            if (pos == 2 || pos == 17 || pos == 33) {
+            if (pos == 2 || pos == 17 || pos == 33) { // community chest spaces
                 Card c = chest.drawCard();
                 pos = CardEffects.apply(c, pos, p, chance, chest);
                 if (c.isGOOJ()) goojCard = c;
@@ -261,7 +262,7 @@ public class play {
 
                 else {
                     p.failedDoubleAttempts++;
-                    if (p.failedDoubleAttempts == 3) {
+                    if (p.failedDoubleAttempts == 3) { //after 3 attempts of doubles, pay fine, out of jail
                         p.inJail = false;
                         p.failedDoubleAttempts = 0;
                         pos = (pos + d1 + d2) % 40;
