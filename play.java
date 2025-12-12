@@ -1,6 +1,10 @@
 package monopoly;
 
 import java.util.Random;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+
 /**
  * Class that runs the game with its main method, contains both strategies A and B and prints out 
  * the statistics for a certain amount of turns for each strategy. The user must change the totalTurns variable 
@@ -59,20 +63,59 @@ public class play {
 
     public static void main(String[] args) {
 
-        // change this number for any run
-        int totalTurns = 1_000;
+        int totalTurns = 1_000;  // start at 1,000
 
-        // run Strategy A
-        resetVisits();
-        playGameA(totalTurns);
-        printStatistics("A", totalTurns);
+        // run 1,000 -> 10,000 -> 100,000 -> 1,000,000
+        for (int i = 0; i < 4; i++) {
 
-        // run Strategy B
-        resetVisits();
-        playGameB(totalTurns);
-        printStatistics("B", totalTurns);
+            // STRATEGY A
+            resetVisits();
+            playGameA(totalTurns);
+            printStatistics("A", totalTurns);
+            writeCSV("resultsA.csv", "A", totalTurns);
+
+            // STRATEGY B
+            resetVisits();
+            playGameB(totalTurns);
+            printStatistics("B", totalTurns);
+            writeCSV("resultsB.csv", "B", totalTurns);
+
+            System.out.println("\n==============================\n");
+
+            // prepare next loop
+            totalTurns *= 10;
+        }
     }
 
+    /**
+     * Writes visit statistics to a CSV file compatible with Excel.
+     */
+    private static void writeCSV(String filename, String strategy, int totalTurns) {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(filename, true))) {
+
+            pw.println("Strategy," + strategy);
+            pw.println("TotalTurns," + totalTurns);
+            pw.println("Index,Square,Visits,Percent");
+
+            double t = totalTurns;
+
+            for (int i = 0; i < 40; i++) {
+                int visits = newGame[i].getTimesVisited();
+                double pct = (visits / t) * 100.0;
+
+                pw.printf("%d,%s,%d,%.5f%n",
+                        i,
+                        newGame[i].getSpaceName().replace(",", " "),
+                        visits,
+                        pct);
+            }
+
+            pw.println();
+
+        } catch (IOException e) {
+            System.out.println("ERROR writing CSV: " + e.getMessage());
+        }
+    }
 
     /**
      * Helper method that resets visited times of each space to zero
@@ -85,12 +128,10 @@ public class play {
 
     /**
      * Dice method that gets a random number from 1 to 6.
-     * @return the random number (simulating a dice)
      */
     private static int dice() {
         return rand.nextInt(6) + 1;
     }
-
 
     // prints visit count and probabilities
     private static void printStatistics(String strategy, int turns) {
@@ -115,7 +156,6 @@ public class play {
 
     /**
      * Strategy A: leave jail immediately (GOOJ or paying)
-     * @param totalTurns number of turns the user inputs
      */
     public static void playGameA(int totalTurns) {
 
@@ -133,7 +173,7 @@ public class play {
 
             if (p.inJail) {
 
-                if (p.hasGOOJ) { //player has a GOOJ card, uses the card and moves
+                if (p.hasGOOJ) {
                     p.hasGOOJ = false;
 
                     if (goojCard.isFromCommunityChest()) chest.returnGOOJCard(goojCard);
@@ -143,53 +183,48 @@ public class play {
                     p.inJail = false;
                     pos = (pos + d1 + d2) % 40;
                 }
-                else { //player doesnt have GOOJ card, pays the fine and moves
+                else { 
                     p.inJail = false;
                     pos = (pos + d1 + d2) % 40;
                 }
             }
 
-            else { //players isn't in jail, then moves
+            else {
                 pos = (pos + d1 + d2) % 40;
 
                 if (d1 == d2) {
                     p.doublesCounter++;
-                    if (p.doublesCounter == 3) { //3 doubles in a row
+                    if (p.doublesCounter == 3) {
                         pos = 10;
-                        p.inJail = true; // goes to jail
-                        p.doublesCounter = 0; // reset double counter
+                        p.inJail = true;
+                        p.doublesCounter = 0;
                     }
                 } else p.doublesCounter = 0;
             }
-            
-            newGame[pos].setTimesVisited(newGame[pos].getTimesVisited() + 1); //update visited times on each space
 
-            if (pos == 30) { // if player falls in space #30, goes to jail
+            newGame[pos].setTimesVisited(newGame[pos].getTimesVisited() + 1);
+
+            if (pos == 30) {
                 pos = 10;
                 p.inJail = true;
             }
 
-            if (pos == 7 || pos == 22 || pos == 36) { // chance spaces
+            if (pos == 7 || pos == 22 || pos == 36) {
                 Card c = chance.drawCard();
                 pos = CardEffects.apply(c, pos, p, chance, chest);
                 if (c.isGOOJ()) goojCard = c;
             }
 
-            if (pos == 2 || pos == 17 || pos == 33) { //community chest spaces
+            if (pos == 2 || pos == 17 || pos == 33) {
                 Card c = chest.drawCard();
                 pos = CardEffects.apply(c, pos, p, chance, chest);
                 if (c.isGOOJ()) goojCard = c;
             }
-
-            
         }
     }
 
-
-
     /**
      * Strategy B: try rolling doubles 3 times before paying
-     * @param totalTurns number of turns the user inputs
      */
     public static void playGameB(int totalTurns) {
 
@@ -218,7 +253,7 @@ public class play {
                     pos = (pos + d1 + d2) % 40;
                 }
 
-                else if (d1 == d2) { // player doesn't have a GOOJ card, tries to get a double, up to 3 consecutive times
+                else if (d1 == d2) {
                     p.inJail = false;
                     pos = (pos + d1 + d2) % 40;
                     p.failedDoubleAttempts = 0;
@@ -246,9 +281,9 @@ public class play {
                     }
                 } else p.doublesCounter = 0;
             }
-           
+
             newGame[pos].setTimesVisited(newGame[pos].getTimesVisited() + 1);
-            
+
             if (pos == 30) {
                 pos = 10;
                 p.inJail = true;
@@ -265,8 +300,6 @@ public class play {
                 pos = CardEffects.apply(c, pos, p, chance, chest);
                 if (c.isGOOJ()) goojCard = c;
             }
-
-           
         }
     }
 }
